@@ -1,9 +1,18 @@
 {
   description = "NixOS for SpaceMiT K1 products";
   inputs.nixpkgs.url = "github:YooLc/nixpkgs/nixos-25.05-small";
+  inputs.nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+  # Mesa 25.0.0 dropped libglapi.so, but we still need it
+  inputs.nixpkgs-mesa.url = "github:NixOS/nixpkgs/bcad4f36b978bd56017dd57bfb71892ce9c9e959";
 
   outputs =
-    { self, nixpkgs, ... }:
+    {
+      self,
+      nixpkgs,
+      nixpkgs-unstable,
+      nixpkgs-mesa,
+      ...
+    }:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -22,6 +31,8 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          pkgs-unstable = nixpkgs-unstable.legacyPackages.${system}.pkgs.pkgsCross.riscv64;
+          pkgs-mesa = nixpkgs-mesa.legacyPackages.${system}.pkgs.pkgsCross.riscv64;
           crossPkgs = pkgs.pkgsCross.riscv64;
         in
         {
@@ -34,6 +45,8 @@
             ];
             specialArgs = {
               inherit crossPkgs;
+              inherit pkgs-unstable;
+              inherit pkgs-mesa;
             };
           };
         }

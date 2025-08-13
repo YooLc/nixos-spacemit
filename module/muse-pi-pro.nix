@@ -3,11 +3,16 @@
   crossPkgs,
   lib,
   modulesPath,
+  pkgs-unstable,
+  pkgs-mesa,
   ...
 }:
 let
   spacemit-firmware = crossPkgs.callPackage ../pkgs/spacemit-firmware { };
-  spacemit-img-gpu-powervr = crossPkgs.callPackage ../pkgs/spacemit-img-gpu-powervr { };
+  spacemit-mesa = crossPkgs.callPackage ../pkgs/spacemit-mesa { inherit pkgs-mesa; };
+  spacemit-img-gpu-powervr = crossPkgs.callPackage ../pkgs/spacemit-img-gpu-powervr {
+    inherit spacemit-mesa;
+  };
 in
 {
   boot = {
@@ -61,26 +66,45 @@ in
     };
     graphics = {
       enable = true;
+      package = spacemit-mesa;
+      extraPackages = [
+        (lib.lowPrio pkgs-mesa.mesa.drivers)
+        spacemit-img-gpu-powervr
+      ];
     };
   };
 
-  environment.systemPackages = with pkgs; [
-    # Utilities
-    vim
-    git
-    wget
-    gcc
-    btop
+  environment.etc = {
+    "powervr.ini".source = "${spacemit-img-gpu-powervr}/etc/powervr.ini";
+    "OpenCL/vendors/IMG.icd".source = "${spacemit-img-gpu-powervr}/etc/OpenCL/vendors/IMG.icd";
+    "vulkan/icd.d/powervr_icd.json".source =
+      "${spacemit-img-gpu-powervr}/etc/vulkan/icd.d/powervr_icd.json";
+  };
 
-    # Meta Info
-    nix-info
-    fastfetch
+  environment.systemPackages =
+    with pkgs;
+    [
+      # Utilities
+      vim
+      git
+      wget
+      gcc
+      btop
+      strace
 
-    # Graphics
-    mesa
-    glmark2
-    glxinfo
-  ];
+      # Meta Info
+      nix-info
+      fastfetch
+
+      # Graphics
+      glmark2
+      glxinfo
+      xwayland
+      xwayland-satellite
+    ]
+    ++ [
+      pkgs-unstable.vulkan-tools
+    ];
 
   # Desktop
   programs.sway.enable = true;
@@ -91,4 +115,12 @@ in
       "flakes"
     ];
   };
+
+  environment.variables = {
+    MESA_LOADER_DRIVER_OVERRIDE = "pvr";
+    GALLIUM_DRIVER = "pvr";
+    LD_LIBRARY_PATH = "/run/opengl-driver/lib";
+  };
+
+  system.stateVersion = "25.05";
 }

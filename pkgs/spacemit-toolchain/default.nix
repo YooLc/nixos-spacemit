@@ -22,16 +22,13 @@ stdenv.mkDerivation rec {
     rm $out/bin/gp-*
   '';
 
-  fixupPhase = ''
-    find "$out" -type f \( -perm -0100 -o -name "*.so" \) -print0 | while read -d "" f; do
-      patchelf --set-interpreter "${pkgs.glibc}/lib64/ld-linux-x86-64.so.2" "$f" || true
-      patchelf --set-rpath "$out/lib:${pkgs.glibc}/lib" "$f" || true
-    done
-  '';
+  nativeBuildInputs = with pkgs; [
+    autoPatchelfHook
+  ];
 
   meta = with lib; {
     description = "SpaceMiT cross-compilation toolchain";
     license = licenses.mit;
-    platforms = platforms.linux;
+    platforms = [ "x86_64-linux" ];
   };
 }
