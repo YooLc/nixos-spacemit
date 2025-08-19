@@ -28,6 +28,10 @@
         default = self.packages.${system}.iso;
       });
 
+      hydraJobs = {
+        iso = self.nixosConfigurations."x86_64-linux".muse-pi-pro.config.system.build.isoImage;
+      };
+
       nixosConfigurations = forAllSystems (
         system:
         let
