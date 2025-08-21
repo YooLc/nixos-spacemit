@@ -1,20 +1,11 @@
 {
-  lib,
-  crossPkgs,
   modulesPath,
   ...
 }:
-let
-  # Spacemit Vendor Kernel (6.6.63)
-  kernelDrv = crossPkgs.callPackage ../pkgs/kernel { };
-  kernelPkg = crossPkgs.linuxPackagesFor kernelDrv;
-in
 {
   imports = [
     (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix")
   ];
-
-  boot.kernelPackages = kernelPkg;
 
   # Needed for mounting stage 2 filesystems
   boot.initrd.kernelModules = [

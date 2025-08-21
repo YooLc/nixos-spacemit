@@ -17,6 +17,7 @@
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
+        "riscv64-linux"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
@@ -30,10 +31,27 @@
       nixosConfigurations = forAllSystems (
         system:
         let
-          pkgs = nixpkgs.legacyPackages.${system};
-          pkgs-unstable = nixpkgs-unstable.legacyPackages.${system}.pkgs.pkgsCross.riscv64;
-          pkgs-mesa = nixpkgs-mesa.legacyPackages.${system}.pkgs.pkgsCross.riscv64;
-          crossPkgs = pkgs.pkgsCross.riscv64;
+          crossBuild = {
+            localSystem = "${system}";
+            crossSystem = {
+              config = "riscv64-unknown-linux-gnu";
+              gcc.arch = "rv64gc";
+              gcc.abi = "lp64d";
+            };
+          };
+          crossBuildOpt = {
+            localSystem = "${system}";
+            crossSystem = {
+              config = "riscv64-unknown-linux-gnu";
+              gcc.arch = "rv64gcv_zba_zbb_zbc_zbs_zicsr_zifencei";
+              gcc.abi = "lp64d";
+            };
+          };
+          pkgs = import nixpkgs { };
+          pkgs-mesa = import nixpkgs-mesa crossBuildOpt;
+          pkgs-unstable = import nixpkgs-unstable crossBuildOpt;
+          pkgs-cross = import nixpkgs crossBuild;
+          pkgs-cross-opt = import nixpkgs crossBuildOpt;
         in
         {
           muse-pi-pro = nixpkgs.lib.nixosSystem {
@@ -44,7 +62,8 @@
               (import ./module/muse-pi-pro.nix)
             ];
             specialArgs = {
-              inherit crossPkgs;
+              inherit pkgs-cross;
+              inherit pkgs-cross-opt;
               inherit pkgs-unstable;
               inherit pkgs-mesa;
             };

@@ -1,21 +1,26 @@
 {
-  pkgs,
-  crossPkgs,
-  lib,
-  modulesPath,
+  pkgs-cross,
+  pkgs-cross-opt,
   pkgs-unstable,
   pkgs-mesa,
+  lib,
+  modulesPath,
   ...
 }:
 let
-  spacemit-firmware = crossPkgs.callPackage ../pkgs/spacemit-firmware { };
-  spacemit-mesa = crossPkgs.callPackage ../pkgs/spacemit-mesa { inherit pkgs-mesa; };
-  spacemit-img-gpu-powervr = crossPkgs.callPackage ../pkgs/spacemit-img-gpu-powervr {
+  # Spacemit Vendor Kernel (6.6.63)
+  kernelDrv = pkgs-cross.callPackage ../pkgs/kernel { };
+  kernelPkg = pkgs-cross.linuxPackagesFor kernelDrv;
+  # Spacemit Vendor Firmware
+  spacemit-firmware = pkgs-cross-opt.callPackage ../pkgs/spacemit-firmware { };
+  spacemit-mesa = pkgs-cross-opt.callPackage ../pkgs/spacemit-mesa { inherit pkgs-mesa; };
+  spacemit-img-gpu-powervr = pkgs-cross-opt.callPackage ../pkgs/spacemit-img-gpu-powervr {
     inherit spacemit-mesa;
   };
 in
 {
   boot = {
+    kernelPackages = kernelPkg;
     initrd = {
       includeDefaultModules = false;
       availableKernelModules = lib.mkForce [
@@ -37,6 +42,7 @@ in
       "ext4"
       "btrfs"
     ];
+    # Print boot log to external monitor
     kernelParams = [ "console=tty1" ];
     # Wireless
     kernelModules = [ "8852bs" ];
@@ -79,10 +85,21 @@ in
     "OpenCL/vendors/IMG.icd".source = "${spacemit-img-gpu-powervr}/etc/OpenCL/vendors/IMG.icd";
     "vulkan/icd.d/powervr_icd.json".source =
       "${spacemit-img-gpu-powervr}/etc/vulkan/icd.d/powervr_icd.json";
+    "glvnd/egl_vendor.d/50_mesa.json" = {
+      text = ''
+        {
+            "file_format_version" : "1.0.0",
+            "ICD" : {
+                "library_path" : "/run/opengl-driver/lib/libEGL_mesa.so.0"
+            }
+        }
+      '';
+      mode = "0444";
+    };
   };
 
   environment.systemPackages =
-    with pkgs;
+    with pkgs-cross-opt;
     [
       # Utilities
       vim
@@ -100,7 +117,8 @@ in
       glmark2
       glxinfo
       xwayland
-      xwayland-satellite
+      egl-wayland
+      libGL
     ]
     ++ [
       pkgs-unstable.vulkan-tools
@@ -117,8 +135,8 @@ in
   };
 
   environment.variables = {
-    MESA_LOADER_DRIVER_OVERRIDE = "pvr";
-    GALLIUM_DRIVER = "pvr";
+    MESA_LOADER_DRIVER_OVERRIDE = "zink";
+    GALLIUM_DRIVER = "zink";
     LD_LIBRARY_PATH = "/run/opengl-driver/lib";
   };
 
