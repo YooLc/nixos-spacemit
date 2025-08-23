@@ -47,7 +47,7 @@
             localSystem = "${system}";
             crossSystem = {
               config = "riscv64-unknown-linux-gnu";
-              gcc.arch = "rv64gcv_zba_zbb_zbc_zbs_zicsr_zifencei";
+              gcc.arch = "rv64gc";
               gcc.abi = "lp64d";
             };
           };
